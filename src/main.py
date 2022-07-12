@@ -9,6 +9,7 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User,Character,Planet,Favorite
+import requests
 #from models import Person
 
 app = Flask(__name__)
@@ -52,15 +53,9 @@ def character_list():
     return jsonify(all_characters), 200
     
 
-@app.route('/character/<int:character_id>', methods=['PUT', 'GET'])
-def get_single_character(character_id):
-    body = request.get_json() 
-    if request.method == 'PUT':
-        single_character = Character.query.get(character_id)
-        single_character.name = body.name
-        db.session.commit()
-    if request.method == 'GET':
-        single_character = Character.query.get(character_id)
+@app.route('/character/<int:character_id>', methods=['GET'])
+def single_character(character_id):
+        single_character = Character.query.filter_by(id=character_id).one_or_none()
         return jsonify(single_character.serialize()), 200
 
 
@@ -74,14 +69,8 @@ def planet_list():
     
     return jsonify(all_planets), 200
 
-@app.route('/planet/<int:planet_id>', methods=['PUT', 'GET'])
-def get_single_planet(planet_id):
-    body = request.get_json() #{ 'username': 'new_username'}
-    if request.method == 'PUT':
-        single_planet = Planet.query.get(planet_id)
-        single_planet.name = body.name
-        db.session.commit()
-    if request.method == 'GET':
+@app.route('/planet/<int:planet_id>', methods=['GET'])
+def single_planet(planet_id):
         single_planet = Planet.query.get(planet_id)
         return jsonify(single_planet.serialize()), 200
 
@@ -126,6 +115,56 @@ def handle_user_fav(user_id):
 
     favorites = Favorite.query.filter_by(user_id=user_id)
     return jsonify([fav.serialize() for fav in favorites]), 200
+
+
+#intento de migrar datos de la API
+@app.route('/llenarbd', methods=['POST'])
+def llenarbd():
+    response = requests.get("https://www.swapi.tech/api/people/")
+    body = response.json()
+    characters = body['results']
+    for character in characters:
+        _response = requests.get(f"https://www.swapi.tech/api/people/{character['uid']}")
+        _body = _response.json()
+        properties = _body['result']['properties']
+        _character = Character(
+            name = properties["name"],
+            gender = properties["gender"],
+            birth_year = properties["birth_year"],
+            height = properties["height"]
+        )
+        db.session.add(_character)
+    try:
+        db.session.commit()
+        return jsonify(f"added{len(characters)} characters"),200
+    except Exception as error:
+      db.session.rollback()
+      return jsonify(f"error.arg"), 400
+
+#para los planetas
+@app.route('/llenarbdp', methods=['POST'])
+def llenarbdp():
+    response = requests.get("https://www.swapi.tech/api/planets/")
+    body = response.json()
+    planets = body['results']
+    for planet in planets:
+        _response = requests.get(f"https://www.swapi.tech/api/planets/{planet['uid']}")
+        _body = _response.json()
+        properties = _body['result']['properties']
+        _planet = Planet(
+            name = properties["name"],
+            terrain = properties["terrain"],
+            climate = properties["climate"],
+            population = properties["population"]
+        )
+        db.session.add(_planet)
+    try:
+        db.session.commit()
+        return jsonify(f"added{len(planets)} planets"),200
+    except Exception as error:
+      db.session.rollback()
+      return jsonify(f"error.arg"), 400
+
 
 
 
