@@ -165,6 +165,34 @@ def llenarbdp():
       db.session.rollback()
       return jsonify(f"error.arg"), 400
 
+# Para ambos deletes
+
+@app.route('/favorite/character/<int:character_id>', methods=['GET', 'DELETE'])
+def get_favorite_id(character_id):
+    favorite_id = Favorite.query.filter_by(id=character_id).one_or_none()
+    if favorite_id is None:
+        return jsonify("no existe"), 404
+    if request.method == 'GET':
+        return jsonify(favorite_id.serialize()), 200
+    else:
+        deleted = favorite_id.delete()
+        if deleted == False: return jsonify("Hubo un error"), 500
+        return "", 204
+
+@app.route('/favorite/planet/<int:planet_id>', methods=['GET', 'DELETE'])
+def get_pfavorite_id(planet_id):
+    favorite_id = Favorite.query.filter_by(id=planet_id).one_or_none()
+    if favorite_id is None:
+        return jsonify("no existe"), 404
+    if request.method == 'GET':
+        return jsonify(favorite_id.serialize()), 200
+    else:
+        deleted = favorite_id.delete()
+        if deleted == False: return jsonify("Hubo un error"), 500
+        return "", 204
+
+
+
 
 
 
